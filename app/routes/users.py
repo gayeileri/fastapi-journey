@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-from database.connection import Database
-from models.users import User, UserSignIn
+from app.database.connection import Database
+from app.models.users import User, UserSignIn
 
 
 user_router = APIRouter(tags=["Users"])

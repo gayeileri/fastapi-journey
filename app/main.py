@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
-from database.connection import initialize_database
-from routes.events import event_router
-from routes.users import user_router
+from app.database.connection import initialize_database
+from app.routes.events import event_router
+from app.routes.users import user_router
 
 
 app = FastAPI()

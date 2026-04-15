@@ -55,8 +55,8 @@ class Database:
 
 # this function is called when the app starts
 async def initialize_database():
-    from models.events import Event
-    from models.users import User
+    from app.models.events import Event
+    from app.models.users import User
 
     settings = Settings()
     client = motor.motor_asyncio.AsyncIOMotorClient(settings.DATABASE_URL)

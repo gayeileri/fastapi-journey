@@ -3,8 +3,8 @@ from typing import List
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, status
 
-from database.connection import Database
-from models.events import Event, EventUpdate
+from app.database.connection import Database
+from app.models.events import Event, EventUpdate
 
 
 event_router = APIRouter(tags=["Events"])
