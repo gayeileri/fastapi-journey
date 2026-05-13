@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <!-- TODO: Change the title to match your system name -->
+    <title>Gym Management System</title>
+
+    <link crossorigin="anonymous"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css"
+          integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+          rel="stylesheet">
+    <link crossorigin="anonymous"
+          href="https://use.fontawesome.com/releases/v5.0.10/css/all.css"
+          integrity="sha384-+d0P83n9kaQMCwj8F4RJB66tzIwOKmrdb46+porD/OvrJ+37WqIM7UoBtwHO6Nlg"
+          rel="stylesheet">
+
+    <style>
+        /* TODO: Customise the navbar colour to suit your domain */
+        .app-navbar {
+            background-color: #c0392b;
+            padding: 1rem 0;
+        }
+
+        .app-navbar h1 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        body {
+            background-color: #f4f6f9;
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding: 1rem 0;
+            background-color: #e9ecef;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <!-- TODO: Change the icon emoji and system name -->
+    <nav class="app-navbar">
+        <div class="container">
+            <h1 class="text-center">🏋️ Gym Management System</h1>
+        </div>
+    </nav>
+</header>
+
+<div class="container mt-4">
+    <!-- TODO: Do NOT rename this block — it must stay as member_container -->
+    {% block member_container %}{% endblock %}
+</div>
+
+<!-- TODO: Update footer with your name and student ID -->
+<footer>
+    <p>SFWE477 &mdash; Final International University &mdash; Your Name | Student ID</p>
+</footer>
+
+</body>
+</html>

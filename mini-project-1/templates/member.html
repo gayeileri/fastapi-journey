@@ -1,0 +1,83 @@
+<!-- TODO: This file must be named member.html and placed inside mini-project-1/templates/ -->
+
+{% extends "home.html" %}
+
+<!-- TODO: Block name must match home.html exactly — keep as member_container -->
+{% block member_container %}
+
+<main class="container">
+    <hr>
+
+    <!-- ─── ADD FORM ─────────────────────────────────────────────────────── -->
+    <section class="container-fluid mb-4">
+        <form method="post">
+            <div class="input-group">
+                <input
+                    class="form-control"
+                    type="text"
+                    name="item"
+                    aria-label="Add a member"
+                    placeholder="Enter member full name"
+                    value="{{ item }}"
+                />
+                <div class="input-group-append">
+                    <button class="btn btn-danger" type="submit">
+                        <i class="fas fa-dumbbell mr-1"></i> Add Member
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <!-- ─── SINGLE ITEM VIEW ─────────────────────────────────────────────
+         TODO: field names must match your Member Pydantic model exactly.
+         Expected fields: member.id, member.name, member.membership_type
+         Add or remove <p> rows to match your actual model fields.         -->
+
+    {% if member %}
+    <article class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="fas fa-id-badge mr-2"></i>Member Details</h4>
+        </div>
+        <div class="card-body">
+            <p><strong>ID:</strong> {{ member.id }}</p>
+            <p><strong>Name:</strong> {{ member.name }}</p>
+            <p><strong>Membership Type:</strong> {{ member.membership_type }}</p>
+
+            <!-- TODO: If your Member model has nested WorkoutSessions, display count here -->
+            <p><strong>Workout Sessions:</strong> {{ member.sessions | length }} logged</p>
+
+            <a href="/home" class="btn btn-outline-secondary btn-sm mt-2">
+                <i class="fas fa-arrow-left mr-1"></i> Back to list
+            </a>
+        </div>
+    </article>
+
+    {% else %}
+
+    <!-- ─── LIST VIEW ────────────────────────────────────────────────────
+         TODO: Loop variable is "member", list variable is "members"
+               Link href must be /member/{{ member.id }}                   -->
+    <section class="container-fluid">
+        <h2 class="text-center mb-3">
+            <i class="fas fa-list mr-2"></i>All Members
+        </h2>
+        <div class="card shadow-sm">
+            <ul class="list-group list-group-flush">
+                {% for member in members %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                        <span class="badge badge-danger badge-pill mr-2">{{ loop.index }}</span>
+                        <a href="/member/{{ member.id }}">{{ member.name }}</a>
+                    </span>
+                    <span class="text-muted small">{{ member.membership_type }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    </section>
+
+</main>
+
+{% endblock %}
