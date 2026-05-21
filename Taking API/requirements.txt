@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+alembic
+redis
+pydantic
+pydantic-settings
+markdown
+language-tool-python
+openai
+python-multipart
+beautifulsoup4

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Note-Taking API Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; gap: 20px; }
+        .panel { border: 1px solid #ccc; padding: 15px; flex: 1; border-radius: 5px; }
+        .hidden { display: none; }
+        textarea { width: 100%; height: 200px; }
+        input[type="text"], input[type="file"] { width: 100%; margin-bottom: 10px; }
+        button { margin-top: 10px; padding: 10px; cursor: pointer; }
+        #html-preview { background-color: #f9f9f9; padding: 10px; border: 1px dashed #aaa; min-height: 200px;}
+        .note-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .note-item:hover { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Markdown Note-Taking API</h1>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="panel" style="flex: 0.5;">
+            <h3>Notes</h3>
+            <button onclick="loadNotes()">Refresh Notes</button>
+            <div id="notes-list"></div>
+        </div>
+
+        <!-- Editor/View -->
+        <div class="panel">
+            <h3>Create / Edit Note</h3>
+            <input type="hidden" id="note-id">
+            <input type="text" id="note-title" placeholder="Note Title">
+            <textarea id="note-content" placeholder="# Markdown Content here..."></textarea>
+            <button onclick="saveNote()">Save Note</button>
+            <button onclick="checkGrammar()">Check Grammar</button>
+
+            <hr>
+            <h3>Upload .md File</h3>
+            <input type="file" id="file-upload" accept=".md">
+            <button onclick="uploadFile()">Upload</button>
+        </div>
+
+        <!-- Preview & Versions -->
+        <div class="panel">
+            <h3>HTML Preview</h3>
+            <button onclick="previewHtml()">Load Rendered HTML</button>
+            <div id="html-preview"></div>
+
+            <hr>
+            <h3>Version History</h3>
+            <button onclick="loadVersions()">Load Versions</button>
+            <div id="versions-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/notes';
+
+        async function loadNotes() {
+            const res = await fetch(API_URL);
+            const notes = await res.json();
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+            notes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'note-item';
+                div.innerText = note.title;
+                div.onclick = () => selectNote(note);
+                list.appendChild(div);
+            });
+        }
+
+        function selectNote(note) {
+            document.getElementById('note-id').value = note.id;
+            document.getElementById('note-title').value = note.title;
+            document.getElementById('note-content').value = note.markdown_content;
+            document.getElementById('html-preview').innerHTML = '';
+            document.getElementById('versions-list').innerHTML = '';
+        }
+
+        async function saveNote() {
+            const id = document.getElementById('note-id').value;
+            const title = document.getElementById('note-title').value;
+            const content = document.getElementById('note-content').value;
+            const payload = { title: title, markdown_content: content, tags: [] };
+
+            let res;
+            if (id) {
+                res = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (res.ok) {
+                alert('Saved!');
+                loadNotes();
+            } else {
+                alert('Error saving note');
+            }
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('file-upload');
+            if (fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const res = await fetch(`${API_URL}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                alert('File uploaded and note created!');
+                loadNotes();
+            } else {
+                const err = await res.json();
+                alert(`Upload failed: ${err.detail}`);
+            }
+        }
+
+        async function previewHtml() {
+            const id = document.getElementById('note-id').value;
+            if (!id) return alert('Select a note first');
+
+            const res = await fetch(`${API_URL}/${id}/rendered`);
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('html-preview').innerHTML = data.html;
+            }
+        }
+
+        async function loadVersions() {
+            const id = document.getElementById('note-id').value;
+            if (!id) return alert('Select a note first');
+
+            const res = await fetch(`${API_URL}/${id}/versions`);
+            if (res.ok) {
+                const versions = await res.json();
+                const list = document.getElementById('versions-list');
+                list.innerHTML = '';
+                versions.forEach(v => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<strong>v${v.version_number}</strong>: ${v.title} (${new Date(v.created_at).toLocaleString()})`;
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        async function checkGrammar() {
+            const id = document.getElementById('note-id').value;
+            if (!id) return alert('Select a note first');
+
+            const res = await fetch(`${API_URL}/${id}/grammar-check`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                console.log(data);
+                alert(`Found ${data.issues.length} grammar issues. Check console for details.`);
+            }
+        }
+
+        loadNotes();
+    </script>
+</body>
+</html>
