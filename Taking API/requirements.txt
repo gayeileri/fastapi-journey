@@ -11,3 +11,6 @@ language-tool-python
 openai
 python-multipart
 beautifulsoup4
+python-jose[cryptography]
+passlib[bcrypt]
+slowapi

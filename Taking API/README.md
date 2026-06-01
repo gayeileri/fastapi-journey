@@ -1,3 +1,19 @@
+Database migration notes:
+
+- A `password_hash` column was added to the `User` model. To apply this change to your database run the SQL in `migrations/add_password_hash.sql` against your Postgres database, for example:
+
+```bash
+psql $DATABASE_URL -f migrations/add_password_hash.sql
+```
+
+Or create an Alembic revision and apply it if you use Alembic.
+## Project Structure
+- `app/models/`: SQLAlchemy database models
+- `app/schemas/`: Pydantic validation schemas
+- `app/routes/`: API endpoints
+- `app/services/`: Core logic (Markdown, OpenAI, Grammar)
+- `app/tasks/`: Background tasks (AI Summary generation)
+- `app/utils/`: Helpers (File validation, Text extraction)
 # Brief 20: Markdown Note-Taking API (Phase 2)
 
 A production-ready FastAPI backend for creating, rendering, and managing Markdown notes.

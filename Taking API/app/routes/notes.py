@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -13,6 +13,10 @@ from app.services.grammar_service import check_grammar
 from app.utils.text_extractor import extract_plain_text
 from app.utils.file_validator import validate_markdown_file
 import uuid
+from app.core.security import get_current_user
+from app.models.user import User
+from app.core import ratelimit
+from app.core.config import settings
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -28,8 +32,16 @@ def get_or_create_tags(db: Session, tag_names: List[str]) -> List[Tag]:
     return tags
 
 @router.post("", response_model=NoteResponse)
-def create_note(note_in: NoteCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    note = Note(title=note_in.title, markdown_content=note_in.markdown_content)
+@ratelimit.limiter.limit(settings.WRITE_RATE)
+def create_note(
+    note_in: NoteCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    request: Request = None,
+    current_user: User = Depends(get_current_user),
+):
+    # Create note scoped to the authenticated user
+    note = Note(title=note_in.title, markdown_content=note_in.markdown_content, user_id=current_user.id)
     if note_in.tags:
         note.tags = get_or_create_tags(db, note_in.tags)
     
@@ -49,12 +61,14 @@ def create_note(note_in: NoteCreate, background_tasks: BackgroundTasks, db: Sess
 @router.get("/search", response_model=List[NoteResponse])
 def search_notes(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     keyword: Optional[str] = None,
     tag: Optional[str] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None
 ):
-    query = db.query(Note)
+    # Scope search to the authenticated user's notes
+    query = db.query(Note).filter(Note.user_id == current_user.id)
 
     if keyword:
         query = query.filter(Note.title.ilike(f"%{keyword}%") | Note.markdown_content.ilike(f"%{keyword}%"))
@@ -68,21 +82,30 @@ def search_notes(
     return query.all()
 
 @router.get("", response_model=List[NoteResponse])
-def list_notes(db: Session = Depends(get_db)):
-    return db.query(Note).all()
+def list_notes(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Return only notes owned by the current user
+    return db.query(Note).filter(Note.user_id == current_user.id).all()
 
 @router.get("/{id}", response_model=NoteResponse)
-def get_note(id: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == id).first()
+def get_note(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     return note
 
 @router.put("/{id}", response_model=NoteResponse)
-def update_note(id: int, note_in: NoteUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == id).first()
+@ratelimit.limiter.limit(settings.WRITE_RATE)
+def update_note(
+    id: int,
+    note_in: NoteUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    request: Request = None,
+    current_user: User = Depends(get_current_user),
+):
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     # Save previous version
     last_version = db.query(NoteVersion).filter(NoteVersion.note_id == id).order_by(NoteVersion.version_number.desc()).first()
@@ -116,55 +139,73 @@ def update_note(id: int, note_in: NoteUpdate, background_tasks: BackgroundTasks,
     return note
 
 @router.delete("/{id}")
-def delete_note(id: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == id).first()
+@ratelimit.limiter.limit(settings.WRITE_RATE)
+def delete_note(id: int, db: Session = Depends(get_db), request: Request = None, current_user: User = Depends(get_current_user)):
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
     db.delete(note)
     db.commit()
     invalidate_cache(id)
     return {"message": "Note deleted"}
 
 @router.get("/{id}/rendered")
-def get_note_rendered(id: int, db: Session = Depends(get_db)):
+def get_note_rendered(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     html = get_rendered_html(id)
     if not html:
-        note = db.query(Note).filter(Note.id == id).first()
+        note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
         if not note:
-            raise HTTPException(status_code=404, detail="Note not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
         html = convert_to_html(note.markdown_content)
         cache_rendered_html(id, html)
     return {"html": html}
 
 @router.get("/{id}/versions", response_model=List[NoteVersionResponse])
-def get_note_versions(id: int, db: Session = Depends(get_db)):
+def get_note_versions(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Ensure note belongs to user
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     versions = db.query(NoteVersion).filter(NoteVersion.note_id == id).order_by(NoteVersion.version_number.desc()).all()
     return versions
 
 @router.get("/{id}/versions/{version_number}", response_model=NoteVersionResponse)
-def get_note_version(id: int, version_number: int, db: Session = Depends(get_db)):
+def get_note_version(id: int, version_number: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Ensure note belongs to user
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     version = db.query(NoteVersion).filter(NoteVersion.note_id == id, NoteVersion.version_number == version_number).first()
     if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Version not found")
     return version
 
 @router.post("/{id}/grammar-check")
-def check_note_grammar(id: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == id).first()
+@ratelimit.limiter.limit(settings.GRAMMAR_RATE)
+def check_note_grammar(id: int, db: Session = Depends(get_db), request: Request = None, current_user: User = Depends(get_current_user)):
+    note = db.query(Note).filter(Note.id == id, Note.user_id == current_user.id).first()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
     plain_text = extract_plain_text(note.markdown_content)
     issues = check_grammar(plain_text)
     return {"issues": issues}
 
 @router.post("/upload", response_model=NoteResponse)
-async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db)):
+@ratelimit.limiter.limit(settings.WRITE_RATE)
+async def upload_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    request: Request = None,
+    current_user: User = Depends(get_current_user),
+):
     markdown_content = await validate_markdown_file(file)
     title = file.filename.rsplit('.', 1)[0]
 
-    note = Note(title=title, markdown_content=markdown_content)
+    # Save uploaded markdown as a note owned by the current user
+    note = Note(title=title, markdown_content=markdown_content, user_id=current_user.id)
     db.add(note)
     db.commit()
     db.refresh(note)
