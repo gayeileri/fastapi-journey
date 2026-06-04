@@ -3,54 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Note-Taking API Demo</title>
+    <title>Markdown Note-Taking API</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { display: flex; gap: 20px; }
-        .panel { border: 1px solid #ccc; padding: 15px; flex: 1; border-radius: 5px; }
-        .hidden { display: none; }
-        textarea { width: 100%; height: 200px; }
-        input[type="text"], input[type="file"] { width: 100%; margin-bottom: 10px; }
-        button { margin-top: 10px; padding: 10px; cursor: pointer; }
-        #html-preview { background-color: #f9f9f9; padding: 10px; border: 1px dashed #aaa; min-height: 200px;}
-        .note-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-        .note-item:hover { background-color: #f0f0f0; }
+        :root {
+            /* Sunset / Warm Dark Theme */
+            --bg: #140f1a;
+            --panel-bg: rgba(45, 25, 40, 0.65);
+            --border: rgba(255, 150, 150, 0.15);
+            --text-main: #fff0f5;
+            --text-muted: #d4a3b8;
+            --primary: #f43f5e; /* Rose */
+            --primary-hover: #e11d48;
+            --gradient: linear-gradient(135deg, #f43f5e 0%, #fb923c 100%);
+            --focus-ring: rgba(244, 63, 94, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 10% 40%, rgba(244, 63, 94, 0.12), transparent 30%),
+                radial-gradient(circle at 85% 60%, rgba(251, 146, 60, 0.12), transparent 30%);
+            background-attachment: fixed;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            gap: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 120px);
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        button {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(244, 63, 94, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            text-shadow: none;
+        }
+
+        button.secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+            border-color: var(--primary);
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--focus-ring);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        textarea {
+            flex-grow: 1;
+            resize: none;
+            font-family: 'Consolas', 'Monaco', 'Fira Code', monospace;
+        }
+
+        #notes-list, #versions-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .note-item, .version-item {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .note-item:hover, .version-item:hover {
+            background: rgba(244, 63, 94, 0.1);
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        #html-preview {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            flex-grow: 1;
+            overflow-y: auto;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+        }
+
+        #html-preview h1, #html-preview h2, #html-preview h3 {
+            margin-bottom: 10px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: left;
+            font-size: revert;
+        }
+        
+        #html-preview p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1.5rem 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--primary);
+            color: #fb923c;
+            background: rgba(244, 63, 94, 0.05);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-group button {
+            margin-bottom: 0;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: rgba(30, 20, 25, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(244, 63, 94, 0.2);
+            animation: slideIn 0.3s ease forwards;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .toast.fadeOut {
+            animation: fadeOut 0.3s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
     </style>
 </head>
 <body>
-    <h1>Markdown Note-Taking API</h1>
+    <h1>✨ Markdown API</h1>
+    
+    <div id="toast-container"></div>
+
     <div class="container">
         <!-- Sidebar -->
-        <div class="panel" style="flex: 0.5;">
-            <h3>Notes</h3>
-            <button onclick="loadNotes()">Refresh Notes</button>
+        <div class="panel">
+            <h3>📚 My Notes</h3>
+            <button onclick="loadNotes()" class="secondary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Refresh
+            </button>
             <div id="notes-list"></div>
         </div>
 
         <!-- Editor/View -->
         <div class="panel">
-            <h3>Create / Edit Note</h3>
+            <h3>📝 Editor</h3>
             <input type="hidden" id="note-id">
-            <input type="text" id="note-title" placeholder="Note Title">
-            <textarea id="note-content" placeholder="# Markdown Content here..."></textarea>
-            <button onclick="saveNote()">Save Note</button>
-            <button onclick="checkGrammar()">Check Grammar</button>
+            <input type="text" id="note-title" placeholder="Enter Note Title...">
+            <textarea id="note-content" placeholder="# Start writing your markdown here..."></textarea>
+            
+            <div class="btn-group">
+                <button onclick="saveNote()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    Save Note
+                </button>
+                <button onclick="checkGrammar()" class="secondary">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Check Grammar
+                </button>
+            </div>
 
             <hr>
-            <h3>Upload .md File</h3>
-            <input type="file" id="file-upload" accept=".md">
-            <button onclick="uploadFile()">Upload</button>
+            <h3>📁 Upload Document</h3>
+            <div class="file-upload-wrapper">
+                <label for="file-upload" class="file-upload-label" id="file-label">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span>Click to browse or drag .md file</span>
+                    </div>
+                </label>
+                <input type="file" id="file-upload" accept=".md" onchange="updateFileName()">
+            </div>
+            <button onclick="uploadFile()" class="secondary">Upload File</button>
         </div>
 
         <!-- Preview & Versions -->
         <div class="panel">
-            <h3>HTML Preview</h3>
-            <button onclick="previewHtml()">Load Rendered HTML</button>
+            <h3>👁️ Preview</h3>
+            <button onclick="previewHtml()" class="secondary">Render HTML</button>
             <div id="html-preview"></div>
 
             <hr>
-            <h3>Version History</h3>
-            <button onclick="loadVersions()">Load Versions</button>
+            <h3>⏳ History</h3>
+            <button onclick="loadVersions()" class="secondary">Load Versions</button>
             <div id="versions-list"></div>
         </div>
     </div>
@@ -58,18 +357,51 @@
     <script>
         const API_URL = '/notes';
 
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            
+            let icon = '';
+            if (type === 'success') icon = '<svg width="20" height="20" fill="none" stroke="#fb923c" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            else if (type === 'error') icon = '<svg width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            else icon = '<svg width="20" height="20" fill="none" stroke="#f43f5e" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fadeOut');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function updateFileName() {
+            const input = document.getElementById('file-upload');
+            const label = document.getElementById('file-label').querySelector('span');
+            if (input.files.length > 0) {
+                label.innerText = input.files[0].name;
+            } else {
+                label.innerText = 'Click to browse or drag .md file';
+            }
+        }
+
         async function loadNotes() {
-            const res = await fetch(API_URL);
-            const notes = await res.json();
-            const list = document.getElementById('notes-list');
-            list.innerHTML = '';
-            notes.forEach(note => {
-                const div = document.createElement('div');
-                div.className = 'note-item';
-                div.innerText = note.title;
-                div.onclick = () => selectNote(note);
-                list.appendChild(div);
-            });
+            try {
+                const res = await fetch(API_URL);
+                const notes = await res.json();
+                const list = document.getElementById('notes-list');
+                list.innerHTML = '';
+                notes.forEach(note => {
+                    const div = document.createElement('div');
+                    div.className = 'note-item';
+                    div.innerHTML = `<strong>${note.title}</strong><br><small style="color:var(--text-muted)">${new Date(note.created_at).toLocaleDateString()}</small>`;
+                    div.onclick = () => selectNote(note);
+                    list.appendChild(div);
+                });
+            } catch (err) {
+                showToast('Failed to load notes', 'error');
+            }
         }
 
         function selectNote(note) {
@@ -78,6 +410,7 @@
             document.getElementById('note-content').value = note.markdown_content;
             document.getElementById('html-preview').innerHTML = '';
             document.getElementById('versions-list').innerHTML = '';
+            showToast(`Loaded "${note.title}"`, 'success');
         }
 
         async function saveNote() {
@@ -86,87 +419,126 @@
             const content = document.getElementById('note-content').value;
             const payload = { title: title, markdown_content: content, tags: [] };
 
-            let res;
-            if (id) {
-                res = await fetch(`${API_URL}/${id}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-            } else {
-                res = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
+            if (!title || !content) {
+                return showToast('Title and content cannot be empty', 'error');
             }
 
-            if (res.ok) {
-                alert('Saved!');
-                loadNotes();
-            } else {
-                alert('Error saving note');
+            try {
+                let res;
+                if (id) {
+                    res = await fetch(`${API_URL}/${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (res.ok) {
+                    showToast('Note saved successfully!', 'success');
+                    loadNotes();
+                } else {
+                    showToast('Error saving note', 'error');
+                }
+            } catch(e) {
+                showToast('Network error', 'error');
             }
         }
 
         async function uploadFile() {
             const fileInput = document.getElementById('file-upload');
-            if (fileInput.files.length === 0) return;
+            if (fileInput.files.length === 0) return showToast('Select a file first', 'error');
 
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            const res = await fetch(`${API_URL}/upload`, {
-                method: 'POST',
-                body: formData
-            });
+            try {
+                const res = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
 
-            if (res.ok) {
-                alert('File uploaded and note created!');
-                loadNotes();
-            } else {
-                const err = await res.json();
-                alert(`Upload failed: ${err.detail}`);
+                if (res.ok) {
+                    showToast('File uploaded successfully!', 'success');
+                    loadNotes();
+                    document.getElementById('file-label').querySelector('span').innerText = 'Click to browse or drag .md file';
+                    fileInput.value = '';
+                } else {
+                    const err = await res.json();
+                    showToast(`Upload failed: ${err.detail}`, 'error');
+                }
+            } catch(e) {
+                showToast('Upload error', 'error');
             }
         }
 
         async function previewHtml() {
             const id = document.getElementById('note-id').value;
-            if (!id) return alert('Select a note first');
+            if (!id) return showToast('Select a note to preview', 'error');
 
-            const res = await fetch(`${API_URL}/${id}/rendered`);
-            if (res.ok) {
-                const data = await res.json();
-                document.getElementById('html-preview').innerHTML = data.html;
+            try {
+                const res = await fetch(`${API_URL}/${id}/rendered`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('html-preview').innerHTML = data.html;
+                    showToast('Preview rendered', 'success');
+                } else {
+                    showToast('Failed to render HTML', 'error');
+                }
+            } catch(e) {
+                showToast('Preview error', 'error');
             }
         }
 
         async function loadVersions() {
             const id = document.getElementById('note-id').value;
-            if (!id) return alert('Select a note first');
+            if (!id) return showToast('Select a note first', 'error');
 
-            const res = await fetch(`${API_URL}/${id}/versions`);
-            if (res.ok) {
-                const versions = await res.json();
-                const list = document.getElementById('versions-list');
-                list.innerHTML = '';
-                versions.forEach(v => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `<strong>v${v.version_number}</strong>: ${v.title} (${new Date(v.created_at).toLocaleString()})`;
-                    list.appendChild(div);
-                });
+            try {
+                const res = await fetch(`${API_URL}/${id}/versions`);
+                if (res.ok) {
+                    const versions = await res.json();
+                    const list = document.getElementById('versions-list');
+                    list.innerHTML = '';
+                    if(versions.length === 0) {
+                        list.innerHTML = '<div style="padding:1rem; color:var(--text-muted); text-align:center;">No versions found.</div>';
+                    }
+                    versions.forEach(v => {
+                        const div = document.createElement('div');
+                        div.className = 'version-item';
+                        div.innerHTML = `<div style="display:flex; justify-content:space-between;"><strong>v${v.version_number}</strong> <span>${new Date(v.created_at).toLocaleTimeString()}</span></div><div style="color:var(--text-muted); margin-top:4px; font-size:0.9rem;">${v.title}</div>`;
+                        list.appendChild(div);
+                    });
+                    showToast('Versions loaded', 'success');
+                } else {
+                    showToast('Failed to load versions', 'error');
+                }
+            } catch(e) {
+                showToast('History error', 'error');
             }
         }
 
         async function checkGrammar() {
             const id = document.getElementById('note-id').value;
-            if (!id) return alert('Select a note first');
+            if (!id) return showToast('Select a note first', 'error');
 
-            const res = await fetch(`${API_URL}/${id}/grammar-check`, { method: 'POST' });
-            if (res.ok) {
-                const data = await res.json();
-                console.log(data);
-                alert(`Found ${data.issues.length} grammar issues. Check console for details.`);
+            showToast('Checking grammar...', 'info');
+            try {
+                const res = await fetch(`${API_URL}/${id}/grammar-check`, { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`Found ${data.issues.length} grammar issues. Check console.`, 'info');
+                    console.log(data);
+                } else {
+                    showToast('Grammar check failed', 'error');
+                }
+            } catch(e) {
+                showToast('Grammar error', 'error');
             }
         }
 
