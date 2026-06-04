@@ -36,3 +36,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def serve_frontend():
     return FileResponse("static/index.html")
+@app.get("/health")
+def health():
+    return {"status": "ok"}
