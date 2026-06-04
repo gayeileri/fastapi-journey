@@ -122,3 +122,5 @@ Secondary: #FullStack #WebDevelopment #TechChallenge #Developer #OpenSource
 - Profile visits from post
 - Follower growth
 - GitHub repository visits/stars from LinkedIn traffic
+
+https://www.linkedin.com/feed/update/urn:li:activity:7457907808810995712/
