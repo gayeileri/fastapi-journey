@@ -1,22 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from typing import List, Optional
 from datetime import datetime
 
+# Tag names must be strictly alphanumeric (no spaces/hyphens/underscores/specials)
+# Pydantic v2 uses `pattern` for regex validation
+TagStr = constr(pattern=r'^[A-Za-z0-9]+$')
+
+
 class TagBase(BaseModel):
-    name: str
+    name: TagStr
+
 
 class TagResponse(TagBase):
     id: int
+
     class Config:
         from_attributes = True
 
+
 class NoteBase(BaseModel):
-    title: str
+    # Title must not exceed 200 characters
+    title: constr(max_length=200)
     markdown_content: str
-    tags: Optional[List[str]] = []
+    tags: Optional[List[TagStr]] = []
+
 
 class NoteCreate(NoteBase):
     pass
+
 
 class NoteUpdate(NoteBase):
     pass

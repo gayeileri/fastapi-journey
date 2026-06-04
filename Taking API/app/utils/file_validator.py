@@ -4,13 +4,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def validate_markdown_file(file: UploadFile) -> str:
-    if not file.filename.endswith('.md'):
+    # Strict extension check
+    filename = file.filename or ""
+    if not filename.lower().endswith('.md'):
         logger.warning(f"Invalid file extension uploaded: {file.filename}")
         raise HTTPException(status_code=400, detail="Only .md files are allowed")
-    
-    if file.content_type not in ["text/markdown", "text/plain", "application/octet-stream"]:
+
+    # Strict MIME type whitelist for Markdown/plain text
+    allowed_mimes = {"text/markdown", "text/plain", "text/x-markdown"}
+    if file.content_type not in allowed_mimes:
         logger.warning(f"Invalid MIME type uploaded: {file.content_type}")
-        raise HTTPException(status_code=400, detail="Invalid MIME type")
+        raise HTTPException(status_code=400, detail="Invalid MIME type for markdown file")
 
     content = await file.read()
     if len(content) > 2 * 1024 * 1024:
