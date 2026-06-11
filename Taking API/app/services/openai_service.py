@@ -1,11 +1,12 @@
-import openai
-from app.core.database import SessionLocal
-from app.models.note import Note
+import logging
 from app.core.config import settings
 
-client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+logger = logging.getLogger(__name__)
+
 
 def generate_summary(text: str) -> str:
+    import openai
+    client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -16,7 +17,10 @@ def generate_summary(text: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
+
 def generate_tags(text: str) -> str:
+    import openai
+    client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -26,4 +30,3 @@ def generate_tags(text: str) -> str:
         max_tokens=50
     )
     return response.choices[0].message.content.strip()
-
