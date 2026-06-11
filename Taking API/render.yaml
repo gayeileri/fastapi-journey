@@ -1,0 +1,41 @@
+services:
+  # ── FastAPI Web Service ──────────────────────────────────────────────────────
+  - type: web
+    name: markdown-notes-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: notes-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: notes-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false          # Set this manually in Render dashboard
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: WRITE_RATE
+        value: "20/minute"
+      - key: GRAMMAR_RATE
+        value: "5/minute"
+    healthCheckPath: /health
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+databases:
+  - name: notes-postgres
+    databaseName: notes_db
+    user: notes_user
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  - type: redis
+    name: notes-redis
+    ipAllowList: []          # Only allow internal connections

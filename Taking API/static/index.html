@@ -253,6 +253,110 @@
             margin-bottom: 0;
         }
 
+        /* Auth Panel */
+        #auth-panel {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(20, 15, 26, 0.92);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 380px;
+            box-shadow: 0 20px 60px rgba(244, 63, 94, 0.2);
+        }
+
+        .auth-box h2 {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 0.75rem;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0;
+            width: auto;
+            border-radius: 0;
+        }
+
+        .auth-tab:hover {
+            color: var(--text-main);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .auth-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .auth-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+
+        #user-badge {
+            position: fixed;
+            top: 1rem;
+            right: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            z-index: 100;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        #user-badge button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            width: auto;
+            margin: 0;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            text-shadow: none;
+        }
+
+        #user-badge button:hover {
+            transform: none;
+            box-shadow: none;
+            background: rgba(244, 63, 94, 0.15);
+        }
+
         /* Toast Notifications */
         #toast-container {
             position: fixed;
@@ -294,6 +398,29 @@
     </style>
 </head>
 <body>
+
+    <!-- Auth Overlay -->
+    <div id="auth-panel">
+        <div class="auth-box">
+            <h2>✨ Markdown API</h2>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchTab('register')">Register</button>
+            </div>
+            <div id="auth-error" class="auth-error"></div>
+            <input type="text" id="auth-username" placeholder="Username">
+            <input type="password" id="auth-password" placeholder="Password">
+            <button id="auth-submit-btn" onclick="submitAuth()">Login</button>
+        </div>
+    </div>
+
+    <!-- User Badge -->
+    <div id="user-badge" style="display:none;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span id="user-badge-name"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+
     <h1>✨ Markdown API</h1>
     
     <div id="toast-container"></div>
@@ -357,6 +484,121 @@
     <script>
         const API_URL = '/notes';
 
+        // ─── Auth State ───────────────────────────────────────────────
+        let authToken = localStorage.getItem('auth_token') || null;
+        let currentUsername = localStorage.getItem('auth_username') || null;
+        let currentTab = 'login';
+
+        function authHeaders() {
+            return authToken
+                ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` }
+                : { 'Content-Type': 'application/json' };
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('auth-error').textContent = '';
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('auth-submit-btn').textContent = tab === 'login' ? 'Login' : 'Register';
+        }
+
+        async function submitAuth() {
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const errEl = document.getElementById('auth-error');
+            errEl.textContent = '';
+
+            if (!username || !password) {
+                errEl.textContent = 'Please fill in both fields.';
+                return;
+            }
+
+            if (currentTab === 'register') {
+                try {
+                    const res = await fetch('/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    if (res.ok) {
+                        // Auto-login after register
+                        errEl.style.color = '#22c55e';
+                        errEl.textContent = 'Registered! Logging in...';
+                        currentTab = 'login';
+                        await doLogin(username, password);
+                    } else {
+                        const data = await res.json();
+                        errEl.style.color = '#ef4444';
+                        errEl.textContent = data.detail || 'Registration failed.';
+                    }
+                } catch {
+                    errEl.style.color = '#ef4444';
+                    errEl.textContent = 'Network error.';
+                }
+            } else {
+                await doLogin(username, password);
+            }
+        }
+
+        async function doLogin(username, password) {
+            const errEl = document.getElementById('auth-error');
+            try {
+                const form = new URLSearchParams();
+                form.append('username', username);
+                form.append('password', password);
+
+                const res = await fetch('/auth/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: form.toString()
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    authToken = data.access_token;
+                    currentUsername = username;
+                    localStorage.setItem('auth_token', authToken);
+                    localStorage.setItem('auth_username', username);
+                    document.getElementById('auth-panel').style.display = 'none';
+                    document.getElementById('user-badge').style.display = 'flex';
+                    document.getElementById('user-badge-name').textContent = username;
+                    loadNotes();
+                } else {
+                    const data = await res.json();
+                    errEl.style.color = '#ef4444';
+                    errEl.textContent = data.detail || 'Login failed.';
+                }
+            } catch {
+                errEl.style.color = '#ef4444';
+                errEl.textContent = 'Network error.';
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUsername = null;
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_username');
+            document.getElementById('auth-panel').style.display = 'flex';
+            document.getElementById('user-badge').style.display = 'none';
+            document.getElementById('notes-list').innerHTML = '';
+            document.getElementById('note-id').value = '';
+            document.getElementById('note-title').value = '';
+            document.getElementById('note-content').value = '';
+            document.getElementById('html-preview').innerHTML = '';
+            document.getElementById('versions-list').innerHTML = '';
+        }
+
+        // If already logged in, skip auth panel
+        if (authToken) {
+            document.getElementById('auth-panel').style.display = 'none';
+            document.getElementById('user-badge').style.display = 'flex';
+            document.getElementById('user-badge-name').textContent = currentUsername || '';
+        }
+
+        // ─── Notes API ────────────────────────────────────────────────
+
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -388,7 +630,9 @@
 
         async function loadNotes() {
             try {
-                const res = await fetch(API_URL);
+                const res = await fetch(API_URL, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 const notes = await res.json();
                 const list = document.getElementById('notes-list');
                 list.innerHTML = '';
@@ -428,13 +672,13 @@
                 if (id) {
                     res = await fetch(`${API_URL}/${id}`, {
                         method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: authHeaders(),
                         body: JSON.stringify(payload)
                     });
                 } else {
                     res = await fetch(API_URL, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: authHeaders(),
                         body: JSON.stringify(payload)
                     });
                 }
@@ -460,6 +704,7 @@
             try {
                 const res = await fetch(`${API_URL}/upload`, {
                     method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
                     body: formData
                 });
 
@@ -482,7 +727,9 @@
             if (!id) return showToast('Select a note to preview', 'error');
 
             try {
-                const res = await fetch(`${API_URL}/${id}/rendered`);
+                const res = await fetch(`${API_URL}/${id}/rendered`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 if (res.ok) {
                     const data = await res.json();
                     document.getElementById('html-preview').innerHTML = data.html;
@@ -500,7 +747,9 @@
             if (!id) return showToast('Select a note first', 'error');
 
             try {
-                const res = await fetch(`${API_URL}/${id}/versions`);
+                const res = await fetch(`${API_URL}/${id}/versions`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 if (res.ok) {
                     const versions = await res.json();
                     const list = document.getElementById('versions-list');
@@ -529,7 +778,10 @@
 
             showToast('Checking grammar...', 'info');
             try {
-                const res = await fetch(`${API_URL}/${id}/grammar-check`, { method: 'POST' });
+                const res = await fetch(`${API_URL}/${id}/grammar-check`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`Found ${data.issues.length} grammar issues. Check console.`, 'info');
@@ -542,7 +794,10 @@
             }
         }
 
-        loadNotes();
+        // Only auto-load notes if already authenticated
+        if (authToken) {
+            loadNotes();
+        }
     </script>
 </body>
 </html>
