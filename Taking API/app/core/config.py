@@ -2,8 +2,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost/notes_db"
-    REDIS_URL: str = "redis://localhost:6379/0"
-    OPENAI_API_KEY: str = ""
+    REDIS_URL: str = "redis://localhost:6379/0"    OPENAI_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
