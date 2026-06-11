@@ -13,5 +13,5 @@ python-multipart
 beautifulsoup4
 python-jose[cryptography]
 passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
+bcrypt==4.2.1
 slowapi

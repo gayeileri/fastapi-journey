@@ -1,4 +1,4 @@
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, field_validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -39,8 +39,16 @@ class NoteResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     summary: Optional[str] = None
-    suggested_tags: Optional[str] = None
+    suggested_tags: Optional[List[str]] = None  # Returned as a list, stored as CSV in DB
     tags: List[TagResponse] = []
+
+    @field_validator("suggested_tags", mode="before")
+    @classmethod
+    def split_suggested_tags(cls, v):
+        """Convert comma-separated string from DB into a list."""
+        if isinstance(v, str):
+            return [t.strip() for t in v.split(",") if t.strip()]
+        return v
 
     class Config:
         from_attributes = True
